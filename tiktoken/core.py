@@ -176,13 +176,15 @@ class Encoding:
         self,
         text: list[str],
         *,
-        num_threads: int = 8,
+        num_threads: int = 1,
         allowed_special: Literal["all"] | AbstractSet[str] = set(),  # noqa: B006
         disallowed_special: Literal["all"] | Collection[str] = "all",
     ) -> list[list[int]]:
-        """Encodes a list of strings into tokens, in parallel.
+        """Encodes a list of strings into tokens.
 
         See `encode` for more details on `allowed_special` and `disallowed_special`.
+        By default this uses a serial batch implementation to reduce Python overhead.
+        Set `num_threads` to a value > 1 to parallelise the work.
 
         ```
         >>> enc.encode_batch(["hello world", "goodbye world"])
@@ -193,14 +195,28 @@ class Encoding:
             allowed_special = self.special_tokens_set
         if disallowed_special == "all":
             disallowed_special = self.special_tokens_set - allowed_special
-        if not isinstance(disallowed_special, frozenset):
-            disallowed_special = frozenset(disallowed_special)
+        if disallowed_special:
+            if not isinstance(disallowed_special, frozenset):
+                disallowed_special = frozenset(disallowed_special)
+            for entry in text:
+                if match := _special_token_regex(disallowed_special).search(entry):
+                    raise_disallowed_special_token(match.group())
 
-        encoder = functools.partial(
-            self.encode, allowed_special=allowed_special, disallowed_special=disallowed_special
-        )
-        with ThreadPoolExecutor(num_threads) as e:
-            return list(e.map(encoder, text))
+        if num_threads and num_threads > 1:
+            encoder = functools.partial(
+                self.encode, allowed_special=allowed_special, disallowed_special=disallowed_special
+            )
+            with ThreadPoolExecutor(num_threads) as e:
+                return list(e.map(encoder, text))
+
+        try:
+            return self._core_bpe.encode_batch(text, allowed_special)
+        except UnicodeEncodeError:
+            text = [
+                entry.encode("utf-16", "surrogatepass").decode("utf-16", "replace")
+                for entry in text
+            ]
+            return self._core_bpe.encode_batch(text, allowed_special)
 
     def encode_with_unstable(
         self,

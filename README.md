@@ -8,6 +8,9 @@ import tiktoken
 enc = tiktoken.get_encoding("o200k_base")
 assert enc.decode(enc.encode("hello world")) == "hello world"
 
+# Batch encoding helps when you have many small strings by reducing Python overhead.
+enc.encode_batch(["hello", "world"])
+
 # To get the tokeniser corresponding to a specific model in the OpenAI API:
 enc = tiktoken.encoding_for_model("gpt-4o")
 ```
@@ -128,4 +131,3 @@ setup(
 
 Then simply `pip install ./my_tiktoken_extension` and you should be able to use your
 custom encodings! Make sure **not** to use an editable install.
-

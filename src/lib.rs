@@ -313,6 +313,19 @@ impl CoreBPE {
         Ok((ret, last_piece_token_len))
     }
 
+    pub fn encode_batch(
+        &self,
+        texts: &[&str],
+        allowed_special: &HashSet<&str>,
+    ) -> Result<Vec<Vec<Rank>>, EncodeError> {
+        let mut encoded = Vec::with_capacity(texts.len());
+        for text in texts {
+            let (tokens, _) = self.encode(text, allowed_special)?;
+            encoded.push(tokens);
+        }
+        Ok(encoded)
+    }
+
     fn _increase_last_piece_token_len(
         &self,
         tokens: Vec<Rank>,
