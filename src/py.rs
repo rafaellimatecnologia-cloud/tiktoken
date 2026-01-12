@@ -48,6 +48,22 @@ impl CoreBPE {
         })
     }
 
+    #[pyo3(name = "encode_batch")]
+    fn py_encode_batch(
+        &self,
+        py: Python,
+        texts: Vec<PyBackedStr>,
+        allowed_special: HashSet<PyBackedStr>,
+    ) -> PyResult<Vec<Vec<Rank>>> {
+        py.detach(|| {
+            let allowed_special: HashSet<&str> =
+                allowed_special.iter().map(|s| s.as_ref()).collect();
+            let texts: Vec<&str> = texts.iter().map(|s| s.as_ref()).collect();
+            self.encode_batch(&texts, &allowed_special)
+                .map_err(|e| PyErr::new::<exceptions::PyValueError, _>(e.message))
+        })
+    }
+
     fn encode_to_tiktoken_buffer(
         &self,
         py: Python,

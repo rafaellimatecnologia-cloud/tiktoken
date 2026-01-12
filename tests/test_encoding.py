@@ -261,3 +261,11 @@ def test_hyp_batch_roundtrip(make_enc: Callable[[], tiktoken.Encoding], batch):
     assert encoded == [enc.encode(t, allowed_special="all") for t in batch]
     decoded = enc.decode_batch(encoded)
     assert decoded == batch
+
+
+def test_encode_batch_equivalence_edge_cases():
+    enc = tiktoken.get_encoding("cl100k_base")
+    long_text = "long-" * 10_000
+    batch = ["", "hello", "こんにちは", "👍", long_text]
+
+    assert enc.encode_batch(batch) == [enc.encode(text) for text in batch]
